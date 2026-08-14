@@ -222,7 +222,6 @@
   <div class="stats">
     <div class="stat"><div class="stat-label">Rate</div><div class="stat-value rate-value">$<input type="number" id="rateInput" inputmode="decimal" step="0.01" min="0"><span>/hr</span></div></div>
     <div class="stat"><div class="stat-label">This shift</div><div class="stat-value" id="elapsedStat">00:00:00</div></div>
-    <div class="stat"><div class="stat-label">Next $25</div><div class="stat-value" id="nextStat">—</div></div>
   </div>
 
   <button class="btn-primary" id="mainBtn">Start now</button>
@@ -277,7 +276,6 @@ const cumValueEl = document.getElementById('cumValue');
 const ringEl = document.getElementById('ring');
 const dialSub = document.getElementById('dialSub');
 const elapsedStat = document.getElementById('elapsedStat');
-const nextStat = document.getElementById('nextStat');
 const mainBtn = document.getElementById('mainBtn');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
@@ -580,7 +578,6 @@ function renderDial(now){
     const elapsed = shiftElapsedMs(inProgress, now);
     elapsedStat.textContent = fmtDuration(elapsed);
     const msIntoHour = elapsed % MS_PER_HOUR;
-    nextStat.textContent = fmtDuration(MS_PER_HOUR - msIntoHour).slice(0,5);
     const frac = msIntoHour / MS_PER_HOUR;
     ringEl.setAttribute('stroke-dashoffset', (CIRC * (1 - frac)).toFixed(2));
     mainBtn.textContent = inProgress.end === null ? 'End shift now' : 'End shift early';
@@ -591,7 +588,6 @@ function renderDial(now){
   statusDot.classList.remove('live');
   totalValueEl.textContent = '0.00';
   elapsedStat.textContent = '00:00:00';
-  nextStat.textContent = '—';
   ringEl.setAttribute('stroke-dashoffset', CIRC.toFixed(2));
 
   if(upcoming){
