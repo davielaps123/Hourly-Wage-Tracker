@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Shift Meter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12161A;
+    --panel:#1B2127;
+    --panel-line:#2A323A;
+    --brass:#C89B3C;
+    --brass-dim:#8A6E2E;
+    --paper:#F0ECE3;
+    --slate:#8A9199;
+    --sage:#7FA189;
+    --danger:#B9614F;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at top, #1a2027 0%, var(--ink) 60%);
+    color:var(--paper);
+    font-family:'IBM Plex Sans',sans-serif;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    min-height:100vh;
+    padding:24px 16px 60px;
+  }
+  .card{
+    width:100%;
+    max-width:400px;
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:20px;
+    padding:26px 22px 22px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03);
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background:linear-gradient(90deg, transparent, var(--brass), transparent);
+    opacity:0.7;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--brass);
+    display:flex; align-items:center; gap:8px; margin-bottom:4px;
+  }
+  .dot{ width:7px;height:7px;border-radius:50%; background:var(--slate); transition:background 0.3s, box-shadow 0.3s; }
+  .dot.live{ background:var(--sage); box-shadow:0 0 8px var(--sage); animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:0.4} }
+  h1{ font-size:19px; font-weight:600; margin:0 0 20px; color:var(--paper); }
+
+  .dial-wrap{ position:relative; width:206px; height:206px; margin:0 auto 6px; }
+  svg{ transform:rotate(-90deg); }
+  .ring-bg{ fill:none; stroke:var(--panel-line); stroke-width:8; }
+  .ring-fg{ fill:none; stroke:var(--brass); stroke-width:8; stroke-linecap:round; transition:stroke-dashoffset 0.2s linear; }
+  .dial-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  .total{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:36px; letter-spacing:-0.02em; color:var(--paper); font-variant-numeric:tabular-nums; }
+  .total small{ font-size:17px; color:var(--slate); font-weight:500; }
+  .subtext{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate); margin-top:6px; letter-spacing:0.03em; text-align:center; padding:0 20px; }
+
+  .cumulative{
+    text-align:center;
+    margin-bottom:18px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .cumulative .label{ font-size:10px; text-transform:uppercase; letter-spacing:0.12em; color:var(--slate); }
+  .cumulative .value{ font-size:16px; font-weight:600; color:var(--sage); font-variant-numeric:tabular-nums; margin-top:2px; }
+  .pay-period-info{ font-size:10.5px; color:var(--slate); margin-top:6px; font-family:'IBM Plex Mono',monospace; }
+  .link-btn{
+    width:auto; background:none; border:none; padding:2px 0; color:var(--brass-dim);
+    font-size:11px; text-decoration:underline; letter-spacing:0; text-transform:none;
+    font-family:'IBM Plex Sans',sans-serif; cursor:pointer; margin-top:4px;
+  }
+
+  .stats{ display:flex; justify-content:space-between; padding:14px 4px; border-top:1px solid var(--panel-line); border-bottom:1px solid var(--panel-line); margin-bottom:18px; }
+  .stat{ text-align:center; flex:1; }
+  .stat-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--slate); margin-bottom:4px; }
+  .stat-value{ font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:500; color:var(--paper); font-variant-numeric:tabular-nums; }
+  .rate-value{ display:flex; align-items:center; justify-content:center; gap:2px; }
+  #rateInput{
+    width:42px; background:transparent; border:none; border-bottom:1px dashed var(--brass-dim);
+    color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:500;
+    text-align:center; padding:0 0 1px;
+  }
+  #rateInput::-webkit-outer-spin-button, #rateInput::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  #rateInput{ -moz-appearance:textfield; }
+  #rateInput:focus{ outline:none; border-bottom-color:var(--brass); }
+
+  button{ font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:14px; border:none; border-radius:11px; padding:13px; width:100%; cursor:pointer; transition:transform 0.08s ease, opacity 0.2s; }
+  button:active{ transform:scale(0.98); }
+  .btn-primary{ background:var(--brass); color:#1B140A; }
+  .btn-secondary{ background:transparent; color:var(--paper); border:1px solid var(--panel-line); }
+
+  .section-title{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.12em;
+    color:var(--slate); margin:22px 0 10px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .section-title button.link-btn{
+    width:auto; background:none; border:none; padding:2px 0; color:var(--brass-dim);
+    font-size:11px; text-decoration:underline; letter-spacing:0; text-transform:none; font-family:'IBM Plex Sans',sans-serif;
+  }
+
+  .add-form{
+    background:var(--ink);
+    border:1px solid var(--panel-line);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:14px;
+  }
+  .field-row{ display:flex; gap:8px; margin-bottom:8px; }
+  .field{ flex:1; }
+  .field label{ display:block; font-size:10px; color:var(--slate); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px; }
+  .field input{
+    width:100%;
+    font-family:'IBM Plex Mono',monospace;
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    color:var(--paper);
+    border-radius:9px;
+    padding:10px;
+    font-size:13px;
+  }
+  .no-end-row{ display:flex; align-items:center; gap:7px; margin:6px 0 12px; }
+  .no-end-row input{ width:auto; }
+  .no-end-row label{ font-size:12px; color:var(--slate); }
+
+  .shift-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+  .shift-item{
+    display:flex; align-items:center; gap:10px;
+    background:var(--ink);
+    border:1px solid var(--panel-line);
+    border-radius:12px;
+    padding:11px 12px;
+  }
+  .shift-item.active{ border-color:var(--brass); box-shadow:0 0 0 1px var(--brass) inset; }
+  .shift-item.completed{ opacity:0.55; }
+  .shift-marker{ width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--slate); }
+  .shift-item.active .shift-marker{ background:var(--sage); box-shadow:0 0 6px var(--sage); }
+  .shift-item.completed .shift-marker{ background:var(--brass-dim); }
+  .shift-info{ flex:1; min-width:0; }
+  .shift-date{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--paper); }
+  .shift-time{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate); margin-top:2px; }
+  .shift-earned{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--sage); font-weight:600; white-space:nowrap; }
+  .shift-del{
+    width:auto; background:none; border:none; color:var(--slate); font-size:18px; line-height:1; padding:4px 2px; cursor:pointer;
+  }
+  .empty-msg{ font-size:12px; color:var(--slate); text-align:center; padding:14px 0; }
+
+  .hint{ font-size:11px; color:var(--slate); text-align:center; margin-top:18px; line-height:1.5; }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="eyebrow"><span class="dot" id="statusDot"></span><span id="statusText">Off the clock</span></div>
+  <h1>Shift Meter</h1>
+
+  <div class="dial-wrap">
+    <svg width="206" height="206" viewBox="0 0 220 220">
+      <circle class="ring-bg" cx="110" cy="110" r="98"></circle>
+      <circle class="ring-fg" id="ring" cx="110" cy="110" r="98" stroke-dasharray="615.75" stroke-dashoffset="615.75"></circle>
+    </svg>
+    <div class="dial-center">
+      <div class="total"><small>$</small><span id="totalValue">0.00</span></div>
+      <div class="subtext" id="dialSub">not started</div>
+    </div>
+  </div>
+
+  <div class="cumulative">
+    <div class="label" id="cumLabel">Total across all shifts</div>
+    <div class="value">$<span id="cumValue">0.00</span></div>
+    <div class="period-range" id="periodRange"></div>
+    <button class="link-btn" id="payScheduleToggle" style="margin-top:6px;">Set pay schedule</button>
+  </div>
+
+  <div class="add-form hidden" id="payForm">
+    <div class="field-row">
+      <div class="field">
+        <label>Pay period starts (morning of)</label>
+        <input type="date" id="pDate">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Frequency</label>
+        <select id="pFreq">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Bi-weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-secondary" id="pSubmit">Save schedule</button>
+    <button class="link-btn" id="pClear" style="margin-top:10px;">Clear schedule (use all-time total)</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Rate</div><div class="stat-value rate-value">$<input type="number" id="rateInput" inputmode="decimal" step="0.01" min="0"><span>/hr</span></div></div>
+    <div class="stat"><div class="stat-label">This shift</div><div class="stat-value" id="elapsedStat">00:00:00</div></div>
+    <div class="stat"><div class="stat-label">Next $25</div><div class="stat-value" id="nextStat">—</div></div>
+  </div>
+
+  <button class="btn-primary" id="mainBtn">Start now</button>
+
+  <div class="section-title">
+    <span>Upcoming shifts</span>
+    <button class="link-btn" id="addToggle">+ Add shift</button>
+  </div>
+
+  <div class="add-form hidden" id="addForm">
+    <div class="field-row">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="fDate">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Start</label>
+        <input type="time" id="fStart">
+      </div>
+      <div class="field" id="fEndWrap">
+        <label>End</label>
+        <input type="time" id="fEnd">
+      </div>
+    </div>
+    <div class="no-end-row">
+      <input type="checkbox" id="fNoEnd">
+      <label for="fNoEnd">No end time — I'll stop it manually</label>
+    </div>
+    <button class="btn-secondary" id="fSubmit">Add shift</button>
+  </div>
+
+  <div class="shift-list" id="shiftList"></div>
+  <div class="empty-msg hidden" id="emptyMsg">No shifts scheduled yet.</div>
+
+  <div class="hint">Add this page to your home screen for one‑tap access.<br>Everything is saved on this device automatically.</div>
+</div>
+
+<script>
+let RATE_PER_HOUR = 25;
+const MS_PER_HOUR = 3600000;
+const CIRC = 2 * Math.PI * 98;
+const STORE_KEY = 'shift-meter-shifts-v2';
+
+let shifts = []; // {id, start(ms), end(ms|null)}
+let loaded = false;
+
+const totalValueEl = document.getElementById('totalValue');
+const cumValueEl = document.getElementById('cumValue');
+const ringEl = document.getElementById('ring');
+const dialSub = document.getElementById('dialSub');
+const elapsedStat = document.getElementById('elapsedStat');
+const nextStat = document.getElementById('nextStat');
+const mainBtn = document.getElementById('mainBtn');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const addToggle = document.getElementById('addToggle');
+const addForm = document.getElementById('addForm');
+const fDate = document.getElementById('fDate');
+const fStart = document.getElementById('fStart');
+const fEnd = document.getElementById('fEnd');
+const fEndWrap = document.getElementById('fEndWrap');
+const fNoEnd = document.getElementById('fNoEnd');
+const fSubmit = document.getElementById('fSubmit');
+const shiftListEl = document.getElementById('shiftList');
+const emptyMsg = document.getElementById('emptyMsg');
+const cumLabel = document.getElementById('cumLabel');
+const periodRange = document.getElementById('periodRange');
+const payScheduleToggle = document.getElementById('payScheduleToggle');
+const payForm = document.getElementById('payForm');
+const pDate = document.getElementById('pDate');
+const pFreq = document.getElementById('pFreq');
+const pSubmit = document.getElementById('pSubmit');
+const pClear = document.getElementById('pClear');
+
+ringEl.setAttribute('stroke-dasharray', CIRC.toFixed(2));
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+function fmtDuration(ms){
+  if(ms < 0) ms = 0;
+  const totalSec = Math.floor(ms/1000);
+  const h = Math.floor(totalSec/3600), m = Math.floor((totalSec%3600)/60), s = totalSec%60;
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+function fmtClock(ms){
+  const d = new Date(ms);
+  let h = d.getHours(); const mi = pad(d.getMinutes());
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if(h === 0) h = 12;
+  return `${h}:${mi} ${ap}`;
+}
+function fmtDate(ms){
+  const d = new Date(ms);
+  return d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+}
+function uid(){ return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtCountdown(ms){
+  if(ms < 0) ms = 0;
+  const totalMin = Math.floor(ms/60000);
+  const days = Math.floor(totalMin/1440);
+  const hours = Math.floor((totalMin%1440)/60);
+  const mins = totalMin%60;
+  if(days > 0) return `${days}d ${pad(hours)}h ${pad(mins)}m`;
+  return `${pad(hours)}h ${pad(mins)}m`;
+}
+
+// ---- pay rate ----
+const RATE_KEY = 'shift-meter-rate-v1';
+function loadRate(){
+  try{
+    const raw = localStorage.getItem(RATE_KEY);
+    const v = raw !== null ? parseFloat(raw) : NaN;
+    if(!isNaN(v) && v > 0) RATE_PER_HOUR = v;
+  }catch(e){}
+}
+function saveRate(){
+  try{ localStorage.setItem(RATE_KEY, String(RATE_PER_HOUR)); }catch(e){}
+}
+const rateInput = document.getElementById('rateInput');
+rateInput.addEventListener('change', () => {
+  const v = parseFloat(rateInput.value);
+  if(!isNaN(v) && v > 0){
+    RATE_PER_HOUR = v;
+    saveRate();
+    renderAll();
+  } else {
+    rateInput.value = RATE_PER_HOUR;
+  }
+});
+
+// ---- pay schedule (drives when the running total resets) ----
+const PAY_KEY = 'shift-meter-payconfig-v1';
+let payConfig = null; // {anchor: ms (midnight of start date), freq: 'daily'|'weekly'|'biweekly'|'monthly'}
+
+function loadPayConfig(){
+  try{
+    const raw = localStorage.getItem(PAY_KEY);
+    payConfig = raw ? JSON.parse(raw) : null;
+  }catch(e){
+    payConfig = null;
+  }
+}
+function savePayConfig(){
+  try{
+    localStorage.setItem(PAY_KEY, JSON.stringify(payConfig));
+  }catch(e){
+    console.error('Could not save pay schedule', e);
+  }
+}
+function addPeriod(ms, freq){
+  const d = new Date(ms);
+  if(freq === 'daily') d.setDate(d.getDate() + 1);
+  else if(freq === 'weekly') d.setDate(d.getDate() + 7);
+  else if(freq === 'biweekly') d.setDate(d.getDate() + 14);
+  else if(freq === 'monthly') d.setMonth(d.getMonth() + 1);
+  return d.getTime();
+}
+// Finds the [start,end) pay period that contains `now`, walking forward from the anchor date.
+function getCurrentPeriod(now){
+  if(!payConfig) return null;
+  const anchor = payConfig.anchor;
+  if(now < anchor){
+    return { start: anchor, end: addPeriod(anchor, payConfig.freq), started: false };
+  }
+  let cursor = anchor;
+  let next = addPeriod(cursor, payConfig.freq);
+  let guard = 0;
+  while(next <= now && guard < 10000){
+    cursor = next;
+    next = addPeriod(cursor, payConfig.freq);
+    guard++;
+  }
+  return { start: cursor, end: next, started: true };
+}
+
+function loadShifts(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    shifts = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    shifts = [];
+  }
+  loaded = true;
+  renderAll();
+}
+function saveShifts(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(shifts));
+  }catch(e){
+    console.error('Could not save shifts', e);
+  }
+}
+
+// earned $ for a single shift given current time
+function shiftEarned(s, now){
+  if(now <= s.start) return 0;
+  const endPoint = (s.end !== null && now >= s.end) ? s.end : now;
+  const elapsed = endPoint - s.start;
+  return (elapsed / MS_PER_HOUR) * RATE_PER_HOUR;
+}
+function shiftElapsedMs(s, now){
+  if(now <= s.start) return 0;
+  const endPoint = (s.end !== null && now >= s.end) ? s.end : now;
+  return endPoint - s.start;
+}
+function isCompleted(s, now){ return s.end !== null && now >= s.end; }
+function isActive(s, now){ return now >= s.start && !isCompleted(s, now); }
+
+function getInProgress(now){
+  return shifts.find(s => isActive(s, now)) || null;
+}
+function getNextUpcoming(now){
+  const upcoming = shifts.filter(s => s.start > now).sort((a,b)=>a.start-b.start);
+  return upcoming[0] || null;
+}
+
+function addShift(startMs, endMs){
+  shifts.push({ id: uid(), start: startMs, end: endMs });
+  shifts.sort((a,b)=>a.start-b.start);
+  saveShifts();
+}
+function removeShift(id){
+  shifts = shifts.filter(s => s.id !== id);
+  saveShifts();
+}
+function endShiftNow(id, now){
+  const s = shifts.find(x => x.id === id);
+  if(s) s.end = now;
+  saveShifts();
+}
+
+// ---- UI events ----
+addToggle.addEventListener('click', () => {
+  addForm.classList.toggle('hidden');
+  if(!addForm.classList.contains('hidden') && !fDate.value){
+    const now = new Date();
+    fDate.value = now.toISOString().slice(0,10);
+  }
+});
+fNoEnd.addEventListener('change', () => {
+  fEndWrap.classList.toggle('hidden', fNoEnd.checked);
+});
+fSubmit.addEventListener('click', () => {
+  if(!fDate.value || !fStart.value){ return; }
+  const [sh, sm] = fStart.value.split(':').map(Number);
+  const startDate = new Date(fDate.value + 'T00:00:00');
+  startDate.setHours(sh, sm, 0, 0);
+  let endMs = null;
+  if(!fNoEnd.checked){
+    if(!fEnd.value) return;
+    const [eh, em] = fEnd.value.split(':').map(Number);
+    const endDate = new Date(fDate.value + 'T00:00:00');
+    endDate.setHours(eh, em, 0, 0);
+    if(endDate.getTime() <= startDate.getTime()){
+      endDate.setDate(endDate.getDate()+1); // shift crosses midnight
+    }
+    endMs = endDate.getTime();
+  }
+  addShift(startDate.getTime(), endMs);
+  fStart.value = ''; fEnd.value = ''; fNoEnd.checked = false;
+  fEndWrap.classList.remove('hidden');
+  addForm.classList.add('hidden');
+});
+
+payScheduleToggle.addEventListener('click', () => {
+  payForm.classList.toggle('hidden');
+  if(!payForm.classList.contains('hidden')){
+    if(payConfig){
+      pDate.value = new Date(payConfig.anchor).toISOString().slice(0,10);
+      pFreq.value = payConfig.freq;
+    } else if(!pDate.value){
+      pDate.value = new Date().toISOString().slice(0,10);
+    }
+  }
+});
+pSubmit.addEventListener('click', () => {
+  if(!pDate.value) return;
+  payConfig = { anchor: new Date(pDate.value + 'T00:00:00').getTime(), freq: pFreq.value };
+  savePayConfig();
+  payForm.classList.add('hidden');
+});
+pClear.addEventListener('click', () => {
+  payConfig = null;
+  savePayConfig();
+  payForm.classList.add('hidden');
+});
+
+mainBtn.addEventListener('click', () => {
+  const now = Date.now();
+  const inProgress = getInProgress(now);
+  if(inProgress){
+    endShiftNow(inProgress.id, now);
+  } else {
+    addShift(now, null);
+  }
+});
+
+// ---- render ----
+function renderList(now){
+  shiftListEl.innerHTML = '';
+  if(shifts.length === 0){
+    emptyMsg.classList.remove('hidden');
+    return;
+  }
+  emptyMsg.classList.add('hidden');
+  const sorted = [...shifts].sort((a,b)=>a.start-b.start);
+  sorted.forEach(s => {
+    const active = isActive(s, now);
+    const completed = isCompleted(s, now);
+    const item = document.createElement('div');
+    item.className = 'shift-item' + (active ? ' active' : '') + (completed ? ' completed' : '');
+
+    const marker = document.createElement('div');
+    marker.className = 'shift-marker';
+
+    const info = document.createElement('div');
+    info.className = 'shift-info';
+    const dateEl = document.createElement('div');
+    dateEl.className = 'shift-date';
+    dateEl.textContent = fmtDate(s.start) + (active ? '  ·  live' : completed ? '  ·  done' : '');
+    const timeEl = document.createElement('div');
+    timeEl.className = 'shift-time';
+    timeEl.textContent = fmtClock(s.start) + ' – ' + (s.end !== null ? fmtClock(s.end) : 'open');
+    info.appendChild(dateEl); info.appendChild(timeEl);
+
+    const earnedEl = document.createElement('div');
+    earnedEl.className = 'shift-earned';
+    const earned = shiftEarned(s, now);
+    earnedEl.textContent = (active || completed) ? ('$' + earned.toFixed(2)) : '';
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'shift-del';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', () => removeShift(s.id));
+
+    item.appendChild(marker);
+    item.appendChild(info);
+    item.appendChild(earnedEl);
+    item.appendChild(delBtn);
+    shiftListEl.appendChild(item);
+  });
+}
+
+function renderDial(now){
+  const inProgress = getInProgress(now);
+
+  if(inProgress){
+    statusDot.classList.add('live');
+    statusText.textContent = 'On the clock';
+    const earned = shiftEarned(inProgress, now);
+    totalValueEl.textContent = earned.toFixed(2);
+    dialSub.textContent = 'accruing $' + RATE_PER_HOUR + '/hr';
+    const elapsed = shiftElapsedMs(inProgress, now);
+    elapsedStat.textContent = fmtDuration(elapsed);
+    const msIntoHour = elapsed % MS_PER_HOUR;
+    nextStat.textContent = fmtDuration(MS_PER_HOUR - msIntoHour).slice(0,5);
+    const frac = msIntoHour / MS_PER_HOUR;
+    ringEl.setAttribute('stroke-dashoffset', (CIRC * (1 - frac)).toFixed(2));
+    mainBtn.textContent = inProgress.end === null ? 'End shift now' : 'End shift early';
+    return;
+  }
+
+  const upcoming = getNextUpcoming(now);
+  statusDot.classList.remove('live');
+  totalValueEl.textContent = '0.00';
+  elapsedStat.textContent = '00:00:00';
+  nextStat.textContent = '—';
+  ringEl.setAttribute('stroke-dashoffset', CIRC.toFixed(2));
+
+  if(upcoming){
+    statusText.textContent = 'Scheduled';
+    dialSub.textContent = 'next shift in ' + fmtDuration(upcoming.start - now);
+  } else {
+    statusText.textContent = 'Off the clock';
+    dialSub.textContent = 'not started';
+  }
+  mainBtn.textContent = 'Start now';
+}
+
+const FREQ_LABEL = { daily:'Daily', weekly:'Weekly', biweekly:'Bi-weekly', monthly:'Monthly' };
+
+function renderCumulative(now){
+  let relevant = shifts;
+  let infoText = '';
+
+  if(payConfig){
+    const period = getCurrentPeriod(now);
+    cumLabel.textContent = 'This pay period';
+    if(period.started){
+      relevant = shifts.filter(s => s.start >= period.start && s.start < period.end);
+      infoText = FREQ_LABEL[payConfig.freq] + ' · ' + fmtDate(period.start) + ' – ' + fmtDate(period.end - 1)
+        + ' · resets in ' + fmtCountdown(period.end - now);
+    } else {
+      relevant = [];
+      infoText = FREQ_LABEL[payConfig.freq] + ' pay period starts ' + fmtDate(period.start);
+    }
+    payScheduleToggle.textContent = 'Edit pay schedule';
+  } else {
+    cumLabel.textContent = 'Total across all shifts';
+    payScheduleToggle.textContent = 'Set pay schedule';
+  }
+
+  const total = relevant.reduce((sum, s) => sum + shiftEarned(s, now), 0);
+  cumValueEl.textContent = total.toFixed(2);
+  periodRange.textContent = infoText;
+}
+
+function renderAll(){
+  if(!loaded) return;
+  const now = Date.now();
+  renderDial(now);
+  renderCumulative(now);
+  renderList(now);
+}
+
+loadRate();
+rateInput.value = RATE_PER_HOUR;
+loadPayConfig();
+loadShifts();
+setInterval(renderAll, 250);
+</script>
+
+</body>
+</html>
